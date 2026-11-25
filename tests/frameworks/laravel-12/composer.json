@@ -1,0 +1,38 @@
+{
+  "name": "litebackup/test-laravel-12",
+  "description": "The Laravel 12 lane of the PHP SDK's tests: a Testbench app that loads the provider",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.2",
+    "litebackup/sdk": "1.3.0",
+    "laravel/framework": "12.74.*",
+    "orchestra/testbench": "10.12.*",
+    "phpunit/phpunit": "11.5.*"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../..",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "litebackup/sdk": "1.3.0"
+        }
+      }
+    }
+  ],
+  "autoload-dev": {
+    "psr-4": {
+      "Litebackup\\Tests\\Support\\": "../../Support/",
+      "Litebackup\\Tests\\Frameworks\\Laravel\\": "../laravel/"
+    }
+  },
+  "config": {
+    "platform": {
+      "php": "8.2.36"
+    },
+    "sort-packages": true
+  },
+  "minimum-stability": "stable"
+}

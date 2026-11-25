@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The laravel-11 lane runs the tests the Laravel lanes share. -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="vendor/autoload.php"
+         cacheDirectory="/tmp/litebackup-phpunit-laravel"
+         colors="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="laravel">
+            <file>../laravel/LaravelLaneTest.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>

@@ -1,0 +1,42 @@
+{
+  "name": "litebackup/sdk-lane-symfony-7.4",
+  "description": "The Symfony integration of the Litebackup PHP SDK, tested against Symfony 7.4",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "doctrine/dbal": "4.6.*",
+    "doctrine/doctrine-bundle": "2.19.*",
+    "litebackup/sdk": "1.3.0",
+    "symfony/console": "7.4.*",
+    "symfony/framework-bundle": "7.4.*",
+    "symfony/messenger": "7.4.*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "11.5.*"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../..",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "litebackup/sdk": "1.3.0"
+        }
+      }
+    }
+  ],
+  "autoload-dev": {
+    "psr-4": {
+      "Litebackup\\Tests\\Support\\": "../../Support/",
+      "Litebackup\\Tests\\Frameworks\\Symfony\\": "../symfony/"
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2.36"
+    }
+  },
+  "minimum-stability": "stable"
+}

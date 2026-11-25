@@ -1,0 +1,52 @@
+#!/bin/bash
+# Run a PHP script of the SDK in the pinned PHP 8.4 test image, as the
+# calling user, with the package and its development packages installed,
+# for tests that run PHP steps from another language's suite (LITEBACKUP_PHP
+# in sdk/python/tests/test_integration.py).
+#
+# Usage: scripts/php-in-docker SCRIPT [ARGUMENT...]
+#
+# The container uses the host's network, so its daemon reaches a server on
+# localhost. It mounts the SDK, LITEBACKUP_PATH (a static litebackup binary
+# from scripts/build, whose daemon runs in the container), and the test's
+# temporary tree, the directory holding XDG_RUNTIME_DIR, at the same paths,
+# and receives the test's LITEBACKUP_ and XDG_ variables and HOME.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+PACKAGE_DIRECTORY="$(cd "$(dirname "${0}")/.." && pwd)"
+SDK_DIRECTORY="$(dirname "${PACKAGE_DIRECTORY}")"
+PHP_VERSION=8.4.28
+PHP_CACHE="${HOME}/.cache/litebackup-php/${PHP_VERSION}"
+: "${LITEBACKUP_PATH:?set LITEBACKUP_PATH to a static litebackup binary}"
+: "${XDG_RUNTIME_DIR:?set XDG_RUNTIME_DIR inside the temporary tree of the test}"
+TEST_DIRECTORY="$(dirname "${XDG_RUNTIME_DIR}")"
+
+docker build --quiet \
+    --build-arg "PHP_IMAGE=php:${PHP_VERSION}-cli" \
+    --tag "litebackup-php-test:${PHP_VERSION}" \
+    --file "${PACKAGE_DIRECTORY}/tests/Dockerfile" \
+    "${PACKAGE_DIRECTORY}/tests" >/dev/null
+mkdir --parents "${PHP_CACHE}/home"
+FORWARDED_VARIABLES=()
+for VARIABLE in LITEBACKUP_API_KEY LITEBACKUP_SESSION LITEBACKUP_PATH XDG_RUNTIME_DIR XDG_STATE_HOME \
+    XDG_CONFIG_HOME HOME; do
+    if [ -n "${!VARIABLE+set}" ]; then
+        FORWARDED_VARIABLES+=(--env "${VARIABLE}")
+    fi
+done
+exec docker run --rm \
+    --network host \
+    --user "$(id --user):$(id --group)" \
+    --volume "${SDK_DIRECTORY}:${SDK_DIRECTORY}" \
+    --volume "${LITEBACKUP_PATH}:${LITEBACKUP_PATH}:ro" \
+    --volume "${TEST_DIRECTORY}:${TEST_DIRECTORY}" \
+    --volume "${PHP_CACHE}/home:/tmp/composer-home" \
+    "${FORWARDED_VARIABLES[@]}" \
+    --env COMPOSER_HOME=/tmp/composer-home/composer \
+    --workdir "${PACKAGE_DIRECTORY}" \
+    "litebackup-php-test:${PHP_VERSION}" \
+    sh -c 'composer install --no-interaction --no-progress --quiet && exec php "${@}"' \
+    php-in-docker \
+    "${@}"

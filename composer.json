@@ -1,0 +1,83 @@
+{
+  "name": "litebackup/sdk",
+  "description": "Back up, replicate, and restore SQLite databases with Litebackup",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://litebackup.com/sdk",
+  "keywords": [
+    "sqlite",
+    "backup",
+    "replication",
+    "laravel",
+    "symfony"
+  ],
+  "authors": [
+    {
+      "name": "Litebackup",
+      "homepage": "https://litebackup.com"
+    }
+  ],
+  "support": {
+    "source": "https://github.com/litebackup/sdk"
+  },
+  "require": {
+    "php": ">=8.2",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "doctrine/dbal": "4.6.*",
+    "doctrine/doctrine-bundle": "2.19.*",
+    "friendsofphp/php-cs-fixer": "3.95.*",
+    "laravel/framework": "12.74.*",
+    "orchestra/testbench": "10.12.*",
+    "phpstan/phpstan": "2.3.*",
+    "phpunit/phpunit": "11.5.*",
+    "symfony/framework-bundle": "7.4.*",
+    "symfony/yaml": "7.4.*"
+  },
+  "suggest": {
+    "ext-pdo_sqlite": "for the PDO adapter, Litebackup\\Integrations\\PdoSqlite",
+    "ext-sqlite3": "for the SQLite3 adapter, Litebackup\\Integrations\\Sqlite3",
+    "ext-sodium": "to verify signed release metadata with Litebackup\\Release::findRelease"
+  },
+  "autoload": {
+    "psr-4": {
+      "Litebackup\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Litebackup\\Tests\\Contract\\": "tests/Contract/",
+      "Litebackup\\Tests\\Unit\\": "tests/Unit/",
+      "Litebackup\\Tests\\Support\\": "tests/Support/",
+      "Litebackup\\Tests\\Frameworks\\Laravel\\": "tests/frameworks/laravel/",
+      "Litebackup\\Tests\\Frameworks\\Symfony\\": "tests/frameworks/symfony/",
+      "Litebackup\\Tests\\Integration\\": "tests/Integration/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Litebackup\\Integrations\\Laravel\\LitebackupServiceProvider"
+      ]
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2.36"
+    }
+  },
+  "minimum-stability": "stable",
+  "archive": {
+    "exclude": [
+      "/vendor",
+      "/tests",
+      "/scripts",
+      "/phpstan.neon",
+      "/phpunit.xml",
+      "/.php-cs-fixer.php",
+      "/composer.lock"
+    ]
+  }
+}

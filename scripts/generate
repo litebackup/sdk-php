@@ -1,0 +1,325 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Writes src/Generated from the socket API spec, ../client-openapi.yaml: a
+ * readonly class with fromWire for each object schema, and a class of
+ * string constants for each string enum, one class in each file, as
+ * Composer's PSR-4 autoloading finds them. Properties are the wire names in
+ * camelCase, as the TypeScript SDK spells them. The spec's ErrorCode enum
+ * is left to scripts/internal/errorcodes, which writes ErrorCodes.php.
+ * scripts/test generate runs it in the pinned PHP image; CI checks that the
+ * committed files are current.
+ *
+ * Usage: scripts/generate [output directory] [alias directory]
+ */
+
+use Symfony\Component\Yaml\Yaml;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+const GENERATED_NOTICE = '// Code generated from client-openapi.yaml by scripts/generate. DO NOT EDIT.';
+const COMMENT_WIDTH = 100;
+/** Schema names PHP reserves as words, and the class names they get. */
+const RESERVED_NAMES = ['Empty' => 'EmptyObject'];
+
+/** A wire value such as role_changed or download-started as ROLE_CHANGED. */
+function constantName(string $wireValue): string
+{
+    return strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '_', $wireValue));
+}
+
+/** A snake_case wire name as camelCase. */
+function propertyName(string $wireName): string
+{
+    return lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $wireName))));
+}
+
+/** A schema value that must be text. */
+function requireText(mixed $value): string
+{
+    if (!is_string($value)) {
+        throw new RuntimeException('expected text in the spec, got ' . get_debug_type($value));
+    }
+    return $value;
+}
+
+/** A schema value that is text when present. */
+function textOrNull(mixed $value): ?string
+{
+    return $value === null ? null : requireText($value);
+}
+
+/**
+ * The enum values of a property, none when it has no enum.
+ *
+ * @param array<string, mixed> $property
+ * @return list<string>
+ */
+function enumValues(array $property): array
+{
+    $values = $property['enum'] ?? [];
+    if (!is_array($values)) {
+        throw new RuntimeException('expected a list of enum values in the spec');
+    }
+    return array_map(requireText(...), array_values($values));
+}
+
+/** The schema name a $ref points at. */
+function referenceName(string $reference): string
+{
+    return substr($reference, strlen('#/components/schemas/'));
+}
+
+/** The PHP class of a schema. */
+function className(string $schemaName): string
+{
+    return RESERVED_NAMES[$schemaName] ?? $schemaName;
+}
+
+/**
+ * The text as a docblock wrapped to COMMENT_WIDTH columns at the indent.
+ *
+ * @return list<string>
+ */
+function docblock(?string $text, string $indent): array
+{
+    if ($text === null || trim($text) === '') {
+        return [];
+    }
+    $width = COMMENT_WIDTH - strlen($indent) - 3;
+    $lines = [''];
+    foreach (preg_split('/\s+/', trim(str_replace('*/', '* /', $text))) ?: [] as $word) {
+        $last = count($lines) - 1;
+        if ($lines[$last] !== '' && strlen($lines[$last]) + strlen($word) + 1 > $width) {
+            $lines[] = $word;
+            continue;
+        }
+        $lines[$last] = $lines[$last] === '' ? $word : $lines[$last] . ' ' . $word;
+    }
+    if (count($lines) === 1 && strlen($indent) + strlen($lines[0]) + 7 <= COMMENT_WIDTH) {
+        return [$indent . '/** ' . $lines[0] . ' */'];
+    }
+    $block = [$indent . '/**'];
+    foreach ($lines as $line) {
+        $block[] = $indent . ' * ' . $line;
+    }
+    $block[] = $indent . ' */';
+    return $block;
+}
+
+/**
+ * How one field decodes: [PHP type, PHPDoc type or null, decoding expression].
+ *
+ * @param array<string, mixed> $property
+ * @param array<string, array<string, mixed>> $schemas
+ * @return array{string, ?string, string}
+ */
+function fieldDecoding(string $wireName, array $property, array $schemas, bool $required): array
+{
+    $key = var_export($wireName, true);
+    $flag = $required ? 'true' : 'false';
+    $nullable = $required ? '' : '?';
+    if (isset($property['$ref'])) {
+        $name = referenceName(requireText($property['$ref']));
+        $target = $schemas[$name];
+        if (($target['type'] ?? null) !== 'object') {
+            return fieldDecoding($wireName, $target, $schemas, $required);
+        }
+        $class = className($name);
+        return [$nullable . $class, null, "WireModel::model(\$fields, {$key}, {$class}::fromWire(...), {$flag})"];
+    }
+    switch ($property['type'] ?? null) {
+        case 'string':
+            if (($property['format'] ?? null) === 'date-time') {
+                return ['?DateTimeImmutable', null, "WireModel::time(\$fields, {$key})"];
+            }
+            return [$nullable . 'string', null, "WireModel::string(\$fields, {$key}, {$flag})"];
+        case 'integer':
+            return [$nullable . 'int', null, "WireModel::integer(\$fields, {$key}, {$flag})"];
+        case 'boolean':
+            return [$nullable . 'bool', null, "WireModel::boolean(\$fields, {$key}, {$flag})"];
+        case 'array':
+            /** @var array<string, mixed> $items */
+            $items = $property['items'];
+            if (isset($items['$ref'])) {
+                $name = referenceName(requireText($items['$ref']));
+                if (($schemas[$name]['type'] ?? null) === 'object') {
+                    return [
+                        $nullable . 'array',
+                        ($required ? '' : '?') . "list<" . className($name) . ">",
+                        "WireModel::models(\$fields, {$key}, " . className($name) . "::fromWire(...), {$flag})",
+                    ];
+                }
+                $items = $schemas[$name];
+            }
+            if (($items['type'] ?? null) === 'string') {
+                return [
+                    $nullable . 'array',
+                    ($required ? '' : '?') . 'list<string>',
+                    "WireModel::strings(\$fields, {$key}, {$flag})",
+                ];
+            }
+    }
+    throw new RuntimeException('unsupported schema for ' . $wireName . ': ' . json_encode($property));
+}
+
+/**
+ * @param array<string, mixed> $schema
+ * @return list<string>
+ */
+function enumClass(string $name, array $schema): array
+{
+    /** @var list<string> $values */
+    $values = $schema['enum'];
+    $lines = docblock(textOrNull($schema['description'] ?? null), '');
+    $lines[] = 'final class ' . className($name);
+    $lines[] = '{';
+    foreach ($values as $value) {
+        $lines[] = '    public const ' . constantName($value) . ' = ' . var_export($value, true) . ';';
+    }
+    $lines[] = '';
+    $lines[] = '    /** Every value this SDK knows; a newer daemon may send others. */';
+    $lines[] = '    public const ALL = [';
+    foreach ($values as $value) {
+        $lines[] = '        self::' . constantName($value) . ',';
+    }
+    $lines[] = '    ];';
+    $lines[] = '}';
+    return $lines;
+}
+
+/**
+ * @param array<string, mixed> $schema
+ * @param array<string, array<string, mixed>> $schemas
+ * @return list<string>
+ */
+function modelClass(string $name, array $schema, array $schemas): array
+{
+    /** @var array<string, array<string, mixed>> $properties */
+    $properties = $schema['properties'] ?? [];
+    /** @var list<string> $required */
+    $required = $schema['required'] ?? [];
+    $lines = docblock(textOrNull($schema['description'] ?? null), '');
+    $lines[] = 'final readonly class ' . className($name);
+    $lines[] = '{';
+    $constants = [];
+    foreach ($properties as $field => $property) {
+        foreach (enumValues($property) as $value) {
+            $constants[] = '    public const ' . constantName($field) . '_' . constantName($value)
+                . ' = ' . var_export($value, true) . ';';
+        }
+    }
+    if ($constants !== []) {
+        array_push($lines, ...$constants);
+        $lines[] = '';
+    }
+    $parameters = [];
+    $arguments = [];
+    $parameterTypes = [];
+    foreach ($properties as $field => $property) {
+        [$type, $documentedType, $decoding] = fieldDecoding($field, $property, $schemas, in_array($field, $required, true));
+        $propertyName = propertyName($field);
+        $description = textOrNull($property['description'] ?? null);
+        array_push($parameters, ...docblock($description, '        '));
+        $parameters[] = "        public {$type} \${$propertyName},";
+        $arguments[] = "            {$propertyName}: {$decoding},";
+        if ($documentedType !== null) {
+            $parameterTypes[] = "     * @param {$documentedType} \${$propertyName}";
+        }
+    }
+    if ($parameters === []) {
+        $lines[] = '    public function __construct() {}';
+    } else {
+        if ($parameterTypes !== []) {
+            $lines[] = '    /**';
+            array_push($lines, ...$parameterTypes);
+            $lines[] = '     */';
+        }
+        $lines[] = '    public function __construct(';
+        array_push($lines, ...$parameters);
+        $lines[] = '    ) {}';
+    }
+    $lines[] = '';
+    $lines[] = '    /** Decodes ' . className($name) . ' from a JSON object. */';
+    $lines[] = '    public static function fromWire(mixed $value): self';
+    $lines[] = '    {';
+    if ($arguments === []) {
+        $lines[] = '        WireModel::fields($value, self::class);';
+        $lines[] = '        return new self();';
+    } else {
+        $lines[] = '        $fields = WireModel::fields($value, self::class);';
+        $lines[] = '        return new self(';
+        array_push($lines, ...$arguments);
+        $lines[] = '        );';
+    }
+    $lines[] = '    }';
+    $lines[] = '}';
+    return $lines;
+}
+
+/**
+ * The file of one class: its notice, namespace, the imports it uses, and the class.
+ *
+ * @param list<string> $classLines
+ */
+function classFile(array $classLines): string
+{
+    $body = implode("\n", $classLines);
+    $imports = [];
+    if (str_contains($body, 'DateTimeImmutable')) {
+        $imports[] = 'use DateTimeImmutable;';
+    }
+    if (str_contains($body, 'WireModel::')) {
+        $imports[] = 'use Litebackup\WireModel;';
+    }
+    $head = "<?php\n\n" . GENERATED_NOTICE . "\n\ndeclare(strict_types=1);\n\nnamespace Litebackup\\Generated;\n\n";
+    if ($imports !== []) {
+        $head .= implode("\n", $imports) . "\n\n";
+    }
+    return $head . $body . "\n";
+}
+
+$sdkRoot = dirname(__DIR__);
+$outputDirectory = $argv[1] ?? $sdkRoot . '/src/Generated';
+/** @var array{components: array{schemas: array<string, array<string, mixed>>}} $spec */
+$spec = Yaml::parseFile($sdkRoot . '/../client-openapi.yaml');
+$schemas = $spec['components']['schemas'];
+$written = [];
+foreach ($schemas as $name => $schema) {
+    if ($name === 'ErrorCode') {
+        continue;
+    }
+    $type = $schema['type'] ?? null;
+    if ($type === 'object') {
+        $classLines = modelClass($name, $schema, $schemas);
+    } elseif ($type === 'string' && isset($schema['enum'])) {
+        $classLines = enumClass($name, $schema);
+    } else {
+        continue;
+    }
+    file_put_contents($outputDirectory . '/' . className($name) . '.php', classFile($classLines));
+    $written[className($name) . '.php'] = true;
+}
+// The contract's exported types are aliased under Litebackup\, each in its
+// own file, so Composer's autoloader finds the alias.
+$aliasDirectory = $argv[2] ?? $sdkRoot . '/src';
+$sdkNamesText = (string) file_get_contents($sdkRoot . '/../testdata/contract/names/sdk-names.json');
+/** @var array{types: list<string>} $sdkNames */
+$sdkNames = json_decode($sdkNamesText, true, 512, JSON_THROW_ON_ERROR);
+foreach ($sdkNames['types'] as $typeName) {
+    if (!isset($written[$typeName . '.php'])) {
+        continue;
+    }
+    $alias = "<?php\n\n" . GENERATED_NOTICE . "\n\ndeclare(strict_types=1);\n\nnamespace Litebackup;\n\n"
+        . "class_alias(Generated\\{$typeName}::class, 'Litebackup\\{$typeName}');\n";
+    file_put_contents($aliasDirectory . '/' . $typeName . '.php', $alias);
+}
+// A schema the spec dropped leaves no file behind; ErrorCodes.php is errorcodes'.
+foreach (glob($outputDirectory . '/*.php') ?: [] as $path) {
+    if (!isset($written[basename($path)]) && basename($path) !== 'ErrorCodes.php') {
+        unlink($path);
+    }
+}

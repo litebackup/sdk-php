@@ -1,0 +1,48 @@
+{
+  "name": "litebackup/test-laravel-11",
+  "description": "The Laravel 11 lane of the PHP SDK's tests: a Testbench app that loads the provider",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.2",
+    "litebackup/sdk": "1.3.0",
+    "laravel/framework": "11.57.*",
+    "orchestra/testbench": "9.18.*",
+    "phpunit/phpunit": "11.5.*"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../..",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "litebackup/sdk": "1.3.0"
+        }
+      }
+    }
+  ],
+  "autoload-dev": {
+    "psr-4": {
+      "Litebackup\\Tests\\Support\\": "../../Support/",
+      "Litebackup\\Tests\\Frameworks\\Laravel\\": "../laravel/"
+    }
+  },
+  "config": {
+    "platform": {
+      "php": "8.2.36"
+    },
+    "sort-packages": true,
+    "policy": {
+      "advisories": {
+        "ignore": [
+          "laravel/framework"
+        ]
+      }
+    }
+  },
+  "minimum-stability": "stable",
+  "extra": {
+    "comment": "Laravel 11 is past its security support, so Composer refuses its releases unless this test lane ignores the advisories; apps still on 11 decide that for themselves."
+  }
+}

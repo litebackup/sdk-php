@@ -1,0 +1,19 @@
+# PHPStan at its highest level over the library, its tests, and its scripts.
+parameters:
+    level: max
+    paths:
+        - src
+        - config
+        - scripts/generate
+        # The lanes' own directories are left out: each vendor directory
+        # links back to this package.
+        - tests/Contract
+        - tests/Unit
+        - tests/Integration
+        - tests/Support
+        - tests/frameworks/laravel
+        - tests/frameworks/symfony
+    excludePaths:
+        # The fake daemon is a script that reads untyped JSON plans.
+        - tests/Support/daemon.php
+    tmpDir: /tmp/litebackup-phpstan

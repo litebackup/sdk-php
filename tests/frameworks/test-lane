@@ -1,0 +1,16 @@
+#!/bin/bash
+# Run one framework lane's tests: install the lane's locked dependencies into
+# its own vendor directory and run its PHPUnit suite. scripts/test runs each
+# lane on the PHP versions its php-versions file lists.
+#
+# Usage: tests/frameworks/test-lane LANE
+set -o errexit
+set -o nounset
+set -o pipefail
+
+LANE="${1:?name a lane, such as laravel-12}"
+LANE_DIRECTORY="$(cd "$(dirname "${0}")/${LANE}" && pwd)"
+cd "${LANE_DIRECTORY}"
+echo "lane ${LANE}"
+composer install --no-interaction --no-progress --quiet
+vendor/bin/phpunit

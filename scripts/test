@@ -1,0 +1,127 @@
+#!/bin/bash
+# Run the PHP SDK's tests, PHPStan, and PHP-CS-Fixer in pinned PHP images, as
+# the calling user, with each image's Composer cache under
+# ~/.cache/litebackup-php.
+#
+# Usage:
+#   scripts/test [--php VERSION] [--integration]   tests, PHPStan, and PHP-CS-Fixer
+#   scripts/test [--php VERSION] -- COMMAND...      a command in the package's directory
+#   scripts/test generate                           regenerate src/Generated
+#
+# --php picks one of PHP_VERSIONS; every one runs by default. --integration
+# also runs tests/Integration/IntegrationTest.php against LITEBACKUP_PATH, a static
+# litebackup binary from scripts/build, mounted at the same path. Each
+# framework lane in tests/frameworks runs on the PHP versions it supports
+# (tests/frameworks/LANE/php-versions), through tests/frameworks/test-lane.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+PHP_VERSIONS=(8.2.36 8.3.37 8.4.28 8.5.13)
+PACKAGE_DIRECTORY="$(cd "$(dirname "${0}")/.." && pwd)"
+SDK_DIRECTORY="$(dirname "${PACKAGE_DIRECTORY}")"
+CACHE_ROOT="${HOME}/.cache/litebackup-php"
+PACKAGE_VERSION="$(sed --quiet "s/^    public const VERSION = '\(.*\)';$/\1/p" \
+    "${PACKAGE_DIRECTORY}/src/Version.php")"
+
+SELECTED_PHP_VERSIONS=("${PHP_VERSIONS[@]}")
+INTEGRATION=0
+COMMAND=()
+while [ "${#}" -gt 0 ]; do
+    case "${1}" in
+        --php)
+            if [ "${#}" -lt 2 ]; then
+                echo "--php needs a version: one of ${PHP_VERSIONS[*]}" >&2
+                exit 2
+            fi
+            SELECTED_PHP_VERSIONS=("${2}")
+            shift 2
+            ;;
+        --integration)
+            INTEGRATION=1
+            shift
+            ;;
+        generate)
+            SELECTED_PHP_VERSIONS=("${PHP_VERSIONS[0]}")
+            COMMAND=(php scripts/generate)
+            shift
+            ;;
+        --)
+            shift
+            COMMAND=("${@}")
+            break
+            ;;
+        *)
+            echo "unknown argument ${1}" >&2
+            exit 2
+            ;;
+    esac
+done
+
+# build_test_image builds the test image of one PHP version and prints its tag.
+build_test_image() {
+    local tag="litebackup-php-test:${1}"
+    docker build --quiet \
+        --build-arg "PHP_IMAGE=php:${1}-cli" \
+        --tag "${tag}" \
+        --file "${PACKAGE_DIRECTORY}/tests/Dockerfile" \
+        "${PACKAGE_DIRECTORY}/tests" >/dev/null
+    echo "${tag}"
+}
+
+# lane_runs reports whether the framework lane ${1} supports PHP ${2}: its
+# php-versions file lists the version's minor, such as 8.3.
+lane_runs() {
+    local minor="${2%.*}"
+    grep --quiet --line-regexp --fixed-strings "${minor}" "${1}/php-versions"
+}
+
+for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
+    TEST_IMAGE="$(build_test_image "${PHP_VERSION}")"
+    PHP_CACHE="${CACHE_ROOT}/${PHP_VERSION}"
+    mkdir --parents "${PHP_CACHE}/home"
+    MOUNT_OPTIONS=(
+        --volume "${SDK_DIRECTORY}:${SDK_DIRECTORY}"
+        --volume "${PHP_CACHE}/home:/tmp/home"
+    )
+    ENVIRONMENT_OPTIONS=(
+        --env HOME=/tmp/home
+        --env COMPOSER_HOME=/tmp/home/composer
+        --env "COMPOSER_ROOT_VERSION=${PACKAGE_VERSION}"
+    )
+    if [ "${INTEGRATION}" = 1 ]; then
+        if [ -z "${LITEBACKUP_PATH:-}" ]; then
+            echo "--integration needs LITEBACKUP_PATH, a static litebackup binary from scripts/build" >&2
+            exit 2
+        fi
+        MOUNT_OPTIONS+=(--volume "${LITEBACKUP_PATH}:${LITEBACKUP_PATH}:ro")
+        ENVIRONMENT_OPTIONS+=(
+            --env "LITEBACKUP_PATH=${LITEBACKUP_PATH}"
+            --env LITEBACKUP_INTEGRATION=1
+        )
+    fi
+    INSTALL_STEP="composer install --no-interaction --no-progress --quiet"
+    if [ "${#COMMAND[@]}" -gt 0 ]; then
+        CONTAINER_STEPS="${INSTALL_STEP} && \"\${@}\""
+    else
+        CONTAINER_STEPS="${INSTALL_STEP} && vendor/bin/phpunit"
+        CONTAINER_STEPS+=" && vendor/bin/phpstan analyse --no-progress --memory-limit=1G"
+        CONTAINER_STEPS+=" && vendor/bin/php-cs-fixer check --diff --show-progress=none"
+        for LANE in "${PACKAGE_DIRECTORY}"/tests/frameworks/*/; do
+            LANE="${LANE%/}"
+            if [ -f "${LANE}/php-versions" ] && lane_runs "${LANE}" "${PHP_VERSION}"; then
+                CONTAINER_STEPS+=" && tests/frameworks/test-lane $(basename "${LANE}")"
+            fi
+        done
+    fi
+    echo "PHP ${PHP_VERSION}"
+    docker run --rm \
+        --user "$(id --user):$(id --group)" \
+        "${MOUNT_OPTIONS[@]}" \
+        "${ENVIRONMENT_OPTIONS[@]}" \
+        --workdir "${PACKAGE_DIRECTORY}" \
+        "${TEST_IMAGE}" \
+        bash -c "${CONTAINER_STEPS}" \
+        litebackup-php-test \
+        "${COMMAND[@]}"
+done

@@ -1,0 +1,94 @@
+#!/bin/bash
+# Check the Composer package as a user gets it: composer validate --strict,
+# then composer archive, then a clean, nonoptimized project in the pinned
+# PHP 8.4 image that requires the archive through an artifact repository
+# and checks that every contract type and generated class autoloads, that
+# the client finds litebackup on PATH, and that installing put no
+# vendor/bin/litebackup there. Nothing is published.
+#
+# Usage: scripts/check-package
+set -o errexit
+set -o nounset
+set -o pipefail
+
+PACKAGE_DIRECTORY="$(cd "$(dirname "${0}")/.." && pwd)"
+PHP_VERSION=8.4.28
+PACKAGE_VERSION="$(sed --quiet "s/^    public const VERSION = '\(.*\)';$/\1/p" \
+    "${PACKAGE_DIRECTORY}/src/Version.php")"
+WORK_DIRECTORY="$(mktemp --directory)"
+trap 'rm --recursive --force "${WORK_DIRECTORY}"' EXIT
+
+# The archive gets the version a release would tag, as an artifact
+# repository reads it from composer.json.
+mkdir --parents "${WORK_DIRECTORY}/source" "${WORK_DIRECTORY}/artifacts" "${WORK_DIRECTORY}/consumer"
+git -C "${PACKAGE_DIRECTORY}" ls-files -z --cached --others --exclude-standard \
+    | tar --create --directory "${PACKAGE_DIRECTORY}" --null --files-from=- \
+    | tar --extract --directory "${WORK_DIRECTORY}/source"
+jq --arg version "${PACKAGE_VERSION}" '.version = $version' "${PACKAGE_DIRECTORY}/composer.json" \
+    > "${WORK_DIRECTORY}/source/composer.json"
+cp "${PACKAGE_DIRECTORY}/../testdata/contract/names/sdk-names.json" "${WORK_DIRECTORY}/sdk-names.json"
+mkdir --parents "${WORK_DIRECTORY}/validate"
+cp "${PACKAGE_DIRECTORY}/composer.json" "${PACKAGE_DIRECTORY}/composer.lock" "${WORK_DIRECTORY}/validate/"
+
+TEST_IMAGE="$("${PACKAGE_DIRECTORY}/scripts/test" --php "${PHP_VERSION}" -- true >/dev/null \
+    && echo "litebackup-php-test:${PHP_VERSION}")"
+
+# The consumer's check, in the image: every shared type and generated class
+# autoloads, the binary is the stand-in on PATH, and no wrapper was installed.
+read -r -d '' CONSUMER_CHECK <<'SCRIPT' || true
+set -eu
+cd /work/validate
+composer validate --strict >/dev/null
+cd /work/source
+composer archive --format=zip --dir=/work/artifacts --file=litebackup-sdk >/dev/null 2>&1
+cd /work/consumer
+printf '{"repositories":[{"type":"artifact","url":"/work/artifacts"},{"packagist.org":false}],"require":{"litebackup/sdk":"%s"}}\n' \
+    "${PACKAGE_VERSION}" > composer.json
+composer install --no-interaction --no-progress --quiet
+mkdir -p bin
+printf '#!/bin/sh\necho stand-in\n' > bin/litebackup
+chmod 755 bin/litebackup
+if [ -e vendor/bin/litebackup ]; then
+    echo "composer install wrote vendor/bin/litebackup" >&2
+    exit 1
+fi
+PATH="/work/consumer/bin:${PATH}" php -r '
+require "vendor/autoload.php";
+$names = json_decode(file_get_contents("/work/sdk-names.json"), true);
+foreach ($names["types"] as $type) {
+    if (!class_exists("Litebackup\\$type") && !interface_exists("Litebackup\\$type")) {
+        fwrite(STDERR, "Litebackup\\$type does not autoload\n");
+        exit(1);
+    }
+}
+foreach (glob("vendor/litebackup/sdk/src/Generated/*.php") as $file) {
+    $class = "Litebackup\\Generated\\" . basename($file, ".php");
+    if (!class_exists($class)) {
+        fwrite(STDERR, "$class does not autoload\n");
+        exit(1);
+    }
+}
+if (is_dir("vendor/litebackup/sdk/tests")) {
+    fwrite(STDERR, "the archive carries the tests\n");
+    exit(1);
+}
+echo Litebackup\Binary::litebackupBinary(getenv()), " ", Litebackup\Version::VERSION, "\n";
+'
+SCRIPT
+
+REPORT="$(docker run --rm \
+    --user "$(id --user):$(id --group)" \
+    --volume "${WORK_DIRECTORY}:/work" \
+    --env HOME=/tmp/home \
+    --env COMPOSER_HOME=/tmp/home/composer \
+    --env "PACKAGE_VERSION=${PACKAGE_VERSION}" \
+    --env "COMPOSER_ROOT_VERSION=${PACKAGE_VERSION}" \
+    "${TEST_IMAGE}" \
+    sh -c "${CONSUMER_CHECK}" 2>&1)" || { echo "FAIL the consumer check:" >&2; echo "${REPORT:-}" >&2; exit 1; }
+EXPECTED="/work/consumer/bin/litebackup ${PACKAGE_VERSION}"
+if [ "${REPORT}" != "${EXPECTED}" ]; then
+    echo "FAIL php:${PHP_VERSION}-cli: want ${EXPECTED}, got" >&2
+    echo "${REPORT}" >&2
+    exit 1
+fi
+echo "ok   php:${PHP_VERSION}-cli: litebackup/sdk ${PACKAGE_VERSION} installs from an artifact repository, autoloads every type, and uses litebackup on PATH"
