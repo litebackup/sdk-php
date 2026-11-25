@@ -20,7 +20,7 @@ final readonly class Writer
         /** the machine label of the writer, or empty when nobody holds the lock */
         public string $writerMachineLabel,
         /** when the writer took the lock */
-        public ?DateTimeImmutable $acquiredTime,
+        public ?DateTimeImmutable $lockAcquired,
         /** on the server's clock */
         public ?DateTimeImmutable $leaseExpires,
         /** how long the lease still runs, negative once it ran out */
@@ -38,7 +38,7 @@ final readonly class Writer
             active: WireModel::boolean($fields, 'active', true),
             thisMachine: WireModel::boolean($fields, 'this_machine', true),
             writerMachineLabel: WireModel::string($fields, 'writer_machine_label', true),
-            acquiredTime: WireModel::time($fields, 'acquired_time'),
+            lockAcquired: WireModel::time($fields, 'lock_acquired'),
             leaseExpires: WireModel::time($fields, 'lease_expires'),
             leaseRemainingMillis: WireModel::integer($fields, 'lease_remaining_millis', false),
             lapsed: WireModel::boolean($fields, 'lapsed', true),

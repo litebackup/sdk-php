@@ -5,7 +5,7 @@
   "license": "MIT",
   "require": {
     "php": ">=8.2",
-    "litebackup/sdk": "1.4.0",
+    "litebackup/sdk": "1.5.0",
     "laravel/framework": "11.57.*",
     "orchestra/testbench": "9.18.*",
     "phpunit/phpunit": "11.5.*"
@@ -17,7 +17,7 @@
       "options": {
         "symlink": true,
         "versions": {
-          "litebackup/sdk": "1.4.0"
+          "litebackup/sdk": "1.5.0"
         }
       }
     }

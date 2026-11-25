@@ -30,7 +30,7 @@ final class PoolTest extends DaemonTestCase
     /** @return array<string, mixed> */
     private static function released(): array
     {
-        return ['database' => ['name' => self::NAME, 'path' => '/x', 'role' => 'origin', 'state' => 'synced'], 'offloaded' => false];
+        return ['database' => ['name' => self::NAME, 'path' => '/x', 'role' => 'origin', 'state' => 'synced']];
     }
 
     /**

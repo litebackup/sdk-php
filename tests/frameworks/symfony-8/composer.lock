@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d838611b5406569b5367bb1e2873491a",
+    "content-hash": "e1276496fde20ed16e762d5f2178d590",
     "packages": [
         {
             "name": "doctrine/dbal",
@@ -530,11 +530,11 @@
         },
         {
             "name": "litebackup/sdk",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "dist": {
                 "type": "path",
                 "url": "../../..",
-                "reference": "4246d70b8b21b406ecc21345c87a2f85dd9f203d"
+                "reference": "700a40fc27b11e8f3bc311b331d65f21be805c28"
             },
             "require": {
                 "ext-json": "*",

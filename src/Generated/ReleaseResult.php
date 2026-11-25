@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace Litebackup\Generated;
 
+use DateTimeImmutable;
 use Litebackup\WireModel;
 
 final readonly class ReleaseResult
@@ -14,7 +15,8 @@ final readonly class ReleaseResult
         public DatabaseStatus $database,
         public bool $checkpointed,
         public bool $vacuumed,
-        public bool $offloaded,
+        /** when the release removed the local file; absent when it kept the file */
+        public ?DateTimeImmutable $offloaded,
     ) {}
 
     /** Decodes ReleaseResult from a JSON object. */
@@ -25,7 +27,7 @@ final readonly class ReleaseResult
             database: WireModel::model($fields, 'database', DatabaseStatus::fromWire(...), true),
             checkpointed: WireModel::boolean($fields, 'checkpointed', true),
             vacuumed: WireModel::boolean($fields, 'vacuumed', true),
-            offloaded: WireModel::boolean($fields, 'offloaded', true),
+            offloaded: WireModel::time($fields, 'offloaded'),
         );
     }
 }

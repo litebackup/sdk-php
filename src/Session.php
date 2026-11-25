@@ -22,9 +22,9 @@ final class Session extends Group
     /**
      * Final-syncs every database, releases every write lock, and stops the
      * daemon. A backup another machine writes has no lock and stays waiting.
-     * Each database it could not sync or release is in failed, with its
+     * Each database it could not sync or release is in failures, with its
      * code, and keeps any write lock it has; the session and the daemon then
-     * stay. An empty failed is the only complete shutdown. Client::close()
+     * stay. An empty failures is the only complete shutdown. Client::close()
      * never does this.
      *
      * @param string|null $durability

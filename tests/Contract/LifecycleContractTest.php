@@ -128,7 +128,7 @@ final class LifecycleContractTest extends DaemonTestCase
             ],
             'release' => [
                 'database' => ['name' => $name, 'path' => '/x', 'role' => 'origin', 'state' => 'synced'],
-                'checkpointed' => false, 'vacuumed' => false, 'offloaded' => false,
+                'checkpointed' => false, 'vacuumed' => false,
             ],
         ];
         $answers = [];

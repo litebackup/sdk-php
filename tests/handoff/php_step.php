@@ -48,8 +48,8 @@ try {
 } finally {
     try {
         $shutdown = $client->session->shutdown(durability: 'server');
-        if ($shutdown->failed !== []) {
-            fwrite(STDERR, 'the session kept ' . implode(', ', array_map(static fn($failure): string => $failure->name, $shutdown->failed)) . "\n");
+        if ($shutdown->failures !== []) {
+            fwrite(STDERR, 'the session kept ' . implode(', ', array_map(static fn($failure): string => $failure->name, $shutdown->failures)) . "\n");
         }
     } finally {
         $client->close();

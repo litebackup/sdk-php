@@ -35,15 +35,14 @@ final readonly class DatabaseStatus
          * pending while a backup or failover origin holds no write lock, as after a start or a
          * drain, until a sync takes it (a start takes back the lock of each backup a drain left
          * pending while the head is still the version it last synced); syncing while changes
-         * stream; retrying while an origin's syncs fail, with last_error saying why and
-         * next_retry_time when the next attempt runs; synced when the server holds every change: a
-         * backup or failover origin whose last sync landed with no change seen after it, until its
-         * next change, or a released database whose last version is on the server; waiting while
-         * another machine is the origin; offloaded when the local file was removed because the
-         * server, or the bucket when the offload asked for it, holds its last version; stopped for
-         * a stopped replica; conflicted when this copy was refused and left as it is, because its
-         * file differs from the server head or its write lock was lost or broken; error with
-         * last_error
+         * stream; retrying while an origin's syncs fail, with error saying why and next_retry when
+         * the next attempt runs; synced when the server holds every change: a backup or failover
+         * origin whose last sync landed with no change seen after it, until its next change, or a
+         * released database whose last version is on the server; waiting while another machine is
+         * the origin; offloaded when the local file was removed because the server, or the bucket
+         * when the offload asked for it, holds its last version; stopped for a stopped replica;
+         * conflicted when this copy was refused and left as it is, because its file differs from
+         * the server head or its write lock was lost or broken; error, with error saying why
          */
         public string $state,
         /** the database is acquired and released by a worker rather than backed up continuously */
@@ -70,22 +69,41 @@ final readonly class DatabaseStatus
         public int $pageCount,
         public int $syncCount,
         public int $hintMisses,
-        public ?string $lastFullScanReason,
+        public ?string $fullScanReason,
         /**
          * the machine label of the last writer this machine saw; empty once this machine released
          * the database, drained it, or offloaded a copy whose write lock it held, as no writer is
          * known then
          */
         public ?string $writerMachineLabel,
-        public ?string $lastError,
-        public ?DateTimeImmutable $lastErrorTime,
+        public ?string $error,
+        public ?DateTimeImmutable $failed,
         /**
          * when the first change the server lacks was seen; absent when the server has every change
          * seen. It survives restarts and may be earlier than the real first change, never later.
          */
-        public ?DateTimeImmutable $firstUnsyncedChangeTime,
+        public ?DateTimeImmutable $syncing,
+        /**
+         * when the current run of failed syncs began, with the first failure after the last
+         * success; absent once a sync succeeds
+         */
+        public ?DateTimeImmutable $retrying,
+        /** when the newest sync landed, the time synced_server holds */
+        public ?DateTimeImmutable $synced,
+        /**
+         * when a backup or failover origin was left without its write lock, by a start, a drain, or
+         * a dropped lock; absent once a sync takes the lock
+         */
+        public ?DateTimeImmutable $pending,
+        /** when this machine last released the database */
+        public ?DateTimeImmutable $released,
+        /**
+         * when the local file was removed because the server or the bucket holds its version;
+         * absent once an acquire brings it back
+         */
+        public ?DateTimeImmutable $offloaded,
         /** when the next attempt of a failed sync runs; absent when none is scheduled */
-        public ?DateTimeImmutable $nextRetryTime,
+        public ?DateTimeImmutable $nextRetry,
         /**
          * set on a failover origin while this machine drains, and on one a drain released, which
          * holds no write lock until it takes one again; a failover then reports its role as
@@ -125,12 +143,17 @@ final readonly class DatabaseStatus
             pageCount: WireModel::integer($fields, 'page_count', true),
             syncCount: WireModel::integer($fields, 'sync_count', true),
             hintMisses: WireModel::integer($fields, 'hint_misses', true),
-            lastFullScanReason: WireModel::string($fields, 'last_full_scan_reason', false),
+            fullScanReason: WireModel::string($fields, 'full_scan_reason', false),
             writerMachineLabel: WireModel::string($fields, 'writer_machine_label', false),
-            lastError: WireModel::string($fields, 'last_error', false),
-            lastErrorTime: WireModel::time($fields, 'last_error_time'),
-            firstUnsyncedChangeTime: WireModel::time($fields, 'first_unsynced_change_time'),
-            nextRetryTime: WireModel::time($fields, 'next_retry_time'),
+            error: WireModel::string($fields, 'error', false),
+            failed: WireModel::time($fields, 'failed'),
+            syncing: WireModel::time($fields, 'syncing'),
+            retrying: WireModel::time($fields, 'retrying'),
+            synced: WireModel::time($fields, 'synced'),
+            pending: WireModel::time($fields, 'pending'),
+            released: WireModel::time($fields, 'released'),
+            offloaded: WireModel::time($fields, 'offloaded'),
+            nextRetry: WireModel::time($fields, 'next_retry'),
             draining: WireModel::boolean($fields, 'draining', false),
             machineLabel: WireModel::string($fields, 'machine_label', false),
             maintenance: WireModel::boolean($fields, 'maintenance', false),

@@ -30,6 +30,7 @@ final class ErrorCodes
     public const NOT_DURABLE = 'not_durable';
     public const NOT_FOUND = 'not_found';
     public const PLAN_LIMIT = 'plan_limit';
+    public const RATE_LIMITED = 'rate_limited';
     public const RULE_DATABASE = 'rule_database';
     public const RULE_EXISTS = 'rule_exists';
     public const SDK_UNSUPPORTED = 'sdk_unsupported';

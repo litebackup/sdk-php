@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f91ab17adf82df03047ab94d6bcf1b67",
+    "content-hash": "223df9f2f86106aea21ab365002714c8",
     "packages": [
         {
             "name": "brick/math",
@@ -2405,11 +2405,11 @@
         },
         {
             "name": "litebackup/sdk",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "dist": {
                 "type": "path",
                 "url": "../../..",
-                "reference": "4246d70b8b21b406ecc21345c87a2f85dd9f203d"
+                "reference": "700a40fc27b11e8f3bc311b331d65f21be805c28"
             },
             "require": {
                 "ext-json": "*",
