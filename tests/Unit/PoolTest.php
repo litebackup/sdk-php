@@ -136,7 +136,7 @@ final class PoolTest extends DaemonTestCase
         self::assertSame(['acquire', 'release', 'acquire', 'release', 'release'], self::paths($daemon));
     }
 
-    public function testCloseAndNestedLeasesAreRefusedInsideACall(): void
+    public function testCloseAndNestedLeasesAreDeniedInsideACall(): void
     {
         $daemon = $this->startDaemon($this->leaseAnswers());
         $pool = $this->clientTo($daemon)->databases->pool(new StepAdapter([]));
@@ -145,9 +145,9 @@ final class PoolTest extends DaemonTestCase
                 static fn() => $pool->close(),
                 static fn() => $pool->lease(self::NAME, static fn(object $inner): null => null),
                 static fn() => $pool->release(self::NAME),
-            ] as $refused) {
+            ] as $denied) {
                 try {
-                    $refused();
+                    $denied();
                     self::fail('the call inside the lease ran');
                 } catch (LitebackupError $error) {
                     self::assertSame(ErrorCode::INVALID_ARGUMENT, $error->errorCode);
@@ -252,7 +252,7 @@ final class PoolTest extends DaemonTestCase
     }
 
     #[RequiresPhpExtension('pcntl')]
-    public function testPoolIsRefusedInAForkedChild(): void
+    public function testPoolIsDeniedInAForkedChild(): void
     {
         $daemon = $this->startDaemon($this->leaseAnswers());
         $pool = $this->clientTo($daemon)->databases->pool(new StepAdapter([]));

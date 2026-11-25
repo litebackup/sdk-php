@@ -55,7 +55,7 @@ final class FakeDaemonTest extends DaemonTestCase
         self::assertSame(['x' => '1'], $requests[0]['query']);
     }
 
-    public function testOrderedAnswersRefuseALaterRequestFirst(): void
+    public function testOrderedAnswersDenyALaterRequestFirst(): void
     {
         $daemon = $this->startDaemon([
             FakeDaemon::json(['path' => '/v1/a'], ['a' => 1]),

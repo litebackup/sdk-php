@@ -350,7 +350,7 @@ final class IntegrationTest extends TestCase
      * seconds of the 3 s lease; the old origin comes back with writes the
      * server lacks and is refused, its file left as it is.
      */
-    public function testFailsOverAndRefusesTheOldOriginsDivergedFile(): void
+    public function testFailsOverAndDeniesTheOldOriginsDivergedFile(): void
     {
         $first = $this->connect('first');
         $second = $this->connect('second');
@@ -388,11 +388,11 @@ final class IntegrationTest extends TestCase
             self::assertSame('conflict', $error->errorCode);
         }
         self::eventually(60, function () use ($restarted, $firstPath): void {
-            $refused = array_filter(
+            $denied = array_filter(
                 $restarted->events->page(limit: 10_000)->events,
-                static fn($event): bool => $event->type === 'refused' && $event->name === 'shared.db' && $event->path === $firstPath,
+                static fn($event): bool => $event->type === 'denied' && $event->name === 'shared.db' && $event->path === $firstPath,
             );
-            self::assertNotSame([], $refused, 'no refused event naming the file yet');
+            self::assertNotSame([], $denied, 'no denied event naming the file yet');
         });
         self::assertSame(8, self::countItems($firstPath));
         $secondFailover->follow(1.5);

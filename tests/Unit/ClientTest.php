@@ -135,7 +135,7 @@ final class ClientTest extends DaemonTestCase
         self::assertSame([], $daemon->requests());
     }
 
-    public function testClosedClientRefusesCalls(): void
+    public function testClosedClientDeniesCalls(): void
     {
         $daemon = $this->startDaemon([]);
         $client = $this->clientTo($daemon);
@@ -150,7 +150,7 @@ final class ClientTest extends DaemonTestCase
     }
 
     #[RequiresPhpExtension('pcntl')]
-    public function testClientIsRefusedInAForkedChild(): void
+    public function testClientIsDeniedInAForkedChild(): void
     {
         $daemon = $this->startDaemon([FakeDaemon::json([], [], 200, ['uses' => 0])]);
         $client = $this->clientTo($daemon);
@@ -219,7 +219,7 @@ final class ClientTest extends DaemonTestCase
         ], $lines);
     }
 
-    public function testLaunchRefusalNamesDrainRequired(): void
+    public function testLaunchDenialNamesDrainRequired(): void
     {
         $binary = $this->script("echo '{\"level\":\"warn\",\"event\":\"x\",\"code\":\"busy\",\"message\":\"a warning\"}' >&2\necho '{\"code\":\"drain_required\",\"message\":\"shut down first\"}' >&2\nexit 1\n");
         $client = new Client(session: 'jobs', binaryPath: $binary, environment: $this->environment());

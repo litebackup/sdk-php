@@ -54,10 +54,10 @@ final class Launch
      *
      * @return array{string, string}
      */
-    public static function launchRefusal(string $output): array
+    public static function launchDenial(string $output): array
     {
-        $refusal = '';
-        $refusalCode = ErrorCode::LAUNCH_FAILED;
+        $denial = '';
+        $denialCode = ErrorCode::LAUNCH_FAILED;
         foreach (preg_split('/\r?\n/', $output) ?: [] as $line) {
             $diagnostic = json_decode($line, true);
             // A warning carries an event; an error does not.
@@ -68,19 +68,19 @@ final class Launch
             if (!is_string($message) || $message === '') {
                 continue;
             }
-            $refusal = $message;
-            $refusalCode = $diagnostic['code'] === ErrorCode::DRAIN_REQUIRED ? ErrorCode::DRAIN_REQUIRED : ErrorCode::LAUNCH_FAILED;
+            $denial = $message;
+            $denialCode = $diagnostic['code'] === ErrorCode::DRAIN_REQUIRED ? ErrorCode::DRAIN_REQUIRED : ErrorCode::LAUNCH_FAILED;
         }
-        if ($refusal === '') {
+        if ($denial === '') {
             return [ErrorCode::LAUNCH_FAILED, trim($output)];
         }
-        return [$refusalCode, $refusal];
+        return [$denialCode, $denial];
     }
 
     public static function launchFailed(string $output, string $cause): LitebackupError
     {
-        [$code, $refusal] = self::launchRefusal($output);
-        return new LitebackupError($code, 'starting Litebackup failed: ' . ($refusal === '' ? $cause : $refusal));
+        [$code, $denial] = self::launchDenial($output);
+        return new LitebackupError($code, 'starting Litebackup failed: ' . ($denial === '' ? $cause : $denial));
     }
 
     /**

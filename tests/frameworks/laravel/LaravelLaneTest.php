@@ -194,7 +194,7 @@ final class LaravelLaneTest extends TestCase
     }
 
     /** @return array<string, array{string, string}> */
-    public static function refusedConnections(): array
+    public static function deniedConnections(): array
     {
         return [
             'an unknown name' => ['absent', 'is not a database connection'],
@@ -204,8 +204,8 @@ final class LaravelLaneTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('refusedConnections')]
-    public function testConnectionIsRefused(string $connection, string $reason): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('deniedConnections')]
+    public function testConnectionIsDenied(string $connection, string $reason): void
     {
         $this->setLitebackup('connections', [$connection => []]);
         $this->command('litebackup:start')->expectsOutputToContain($reason)->assertFailed();

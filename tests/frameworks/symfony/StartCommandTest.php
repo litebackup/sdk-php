@@ -82,7 +82,7 @@ final class StartCommandTest extends BundleTestCase
         );
     }
 
-    public function testAnUnknownConnectionIsRefused(): void
+    public function testAnUnknownConnectionIsDenied(): void
     {
         $daemon = $this->startDaemon([]);
         $kernel = $this->bootApp(['socket_path' => $daemon->socketPath, 'connections' => ['missing' => null]]);
@@ -94,7 +94,7 @@ final class StartCommandTest extends BundleTestCase
         self::assertSame([], $daemon->requests());
     }
 
-    public function testAnotherDriverIsRefused(): void
+    public function testAnotherDriverIsDenied(): void
     {
         $daemon = $this->startDaemon([]);
         $kernel = $this->bootApp(
@@ -124,7 +124,7 @@ final class StartCommandTest extends BundleTestCase
 
     /** @param array<string, mixed> $connectionSettings */
     #[DataProvider('memoryConnections')]
-    public function testMemoryDatabasesAreRefused(array $connectionSettings): void
+    public function testMemoryDatabasesAreDenied(array $connectionSettings): void
     {
         $daemon = $this->startDaemon([]);
         $kernel = $this->bootApp(
@@ -142,7 +142,7 @@ final class StartCommandTest extends BundleTestCase
         self::assertSame([], $daemon->requests());
     }
 
-    public function testAMissingDirectoryIsRefused(): void
+    public function testAMissingDirectoryIsDenied(): void
     {
         $daemon = $this->startDaemon([]);
         $path = $this->workingDirectory . '/absent/app.sqlite';
@@ -174,7 +174,7 @@ final class StartCommandTest extends BundleTestCase
         self::assertSame([], $daemon->requests());
     }
 
-    public function testAnEnabledTestEnvironmentIsRefused(): void
+    public function testAnEnabledTestEnvironmentIsDenied(): void
     {
         $daemon = $this->startDaemon([]);
         $kernel = $this->bootApp(

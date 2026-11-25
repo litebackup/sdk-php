@@ -6,7 +6,7 @@
   "require": {
     "doctrine/dbal": "4.6.*",
     "doctrine/doctrine-bundle": "2.19.*",
-    "litebackup/sdk": "1.5.0",
+    "litebackup/sdk": "1.6.0",
     "symfony/console": "7.4.*",
     "symfony/framework-bundle": "7.4.*",
     "symfony/messenger": "7.4.*"
@@ -21,7 +21,7 @@
       "options": {
         "symlink": true,
         "versions": {
-          "litebackup/sdk": "1.5.0"
+          "litebackup/sdk": "1.6.0"
         }
       }
     }

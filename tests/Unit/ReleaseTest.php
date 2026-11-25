@@ -30,7 +30,7 @@ final class ReleaseTest extends TestCase
     }
 
     #[RequiresPhpExtension('sodium')]
-    public function testTamperedMetadataIsRefused(): void
+    public function testTamperedMetadataIsDenied(): void
     {
         $this->expectException(ReleaseSignatureError::class);
         Release::findRelease(self::metadata('package-metadata-tampered.json'), version: '0.3.30');

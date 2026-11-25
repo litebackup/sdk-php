@@ -32,7 +32,7 @@ mkdir --parents "${PHP_CACHE}/home"
 FORWARDED_VARIABLES=()
 for VARIABLE in LITEBACKUP_API_KEY LITEBACKUP_SESSION LITEBACKUP_PATH XDG_RUNTIME_DIR XDG_STATE_HOME \
     XDG_CONFIG_HOME HOME; do
-    if [ -n "${!VARIABLE+set}" ]; then
+    if [[ -n "${!VARIABLE+set}" ]]; then
         FORWARDED_VARIABLES+=(--env "${VARIABLE}")
     fi
 done

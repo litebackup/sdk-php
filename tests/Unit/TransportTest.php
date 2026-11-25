@@ -158,7 +158,7 @@ final class TransportTest extends DaemonTestCase
         self::assertSame(ErrorCode::INVALID_RESPONSE, $this->callFailure(fn() => $transport->request('GET', '/v1/a', null, 5.0))->errorCode);
     }
 
-    public function testClosedTransportRefusesCalls(): void
+    public function testClosedTransportDeniesCalls(): void
     {
         $daemon = $this->startDaemon([]);
         $transport = new Transport($daemon->socketPath);

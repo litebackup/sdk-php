@@ -9,13 +9,14 @@ namespace Litebackup\Generated;
 /**
  * What happened to a database: role_changed (role is origin or replica, and message is text),
  * draining (a failover origin stops being the origin before a drain releases its lock: its role is
- * unknown until the next role_changed), refused (path names the refused file, such as a failover's
+ * unknown until the next role_changed), denied (path names the refused file, such as a failover's
  * file that holds writes the server lacks), path_unreadable (path names the path a backup rule
  * could not read), and the others by their names.
  */
 final class EventType
 {
     public const ACQUIRED = 'acquired';
+    public const DENIED = 'denied';
     public const DOWNLOAD_FINISHED = 'download_finished';
     public const DOWNLOAD_STARTED = 'download_started';
     public const DRAINING = 'draining';
@@ -25,7 +26,6 @@ final class EventType
     public const OFFLOADED = 'offloaded';
     public const PATH_UNREADABLE = 'path_unreadable';
     public const REBASED = 'rebased';
-    public const REFUSED = 'refused';
     public const RELEASED = 'released';
     public const REPLICATING = 'replicating';
     public const RESTORED = 'restored';
@@ -39,6 +39,7 @@ final class EventType
     /** Every value this SDK knows; a newer daemon may send others. */
     public const ALL = [
         self::ACQUIRED,
+        self::DENIED,
         self::DOWNLOAD_FINISHED,
         self::DOWNLOAD_STARTED,
         self::DRAINING,
@@ -48,7 +49,6 @@ final class EventType
         self::OFFLOADED,
         self::PATH_UNREADABLE,
         self::REBASED,
-        self::REFUSED,
         self::RELEASED,
         self::REPLICATING,
         self::RESTORED,

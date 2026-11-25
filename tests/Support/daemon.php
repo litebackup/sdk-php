@@ -46,7 +46,7 @@ declare(strict_types=1);
  *   {"command": "exit"}                      stop and exit
  */
 
-const STATUS_BODY = '{"session":"contract","server":"http://example","client_version":"1.5.0",'
+const STATUS_BODY = '{"session":"contract","server":"http://example","client_version":"1.6.0",'
     . '"session_id":"s","watch":"inotify","databases":[]}';
 const READ_SIZE = 65536;
 
@@ -362,7 +362,7 @@ final class Daemon
         } else {
             $body = array_key_exists('json', $answer) ? json_encode($answer['json']) : (string) ($answer['body'] ?? '');
             $head = ['HTTP/1.1 ' . (int) ($answer['status'] ?? 200) . ' Answer'];
-            $clientVersion = array_key_exists('client_version', $this->plan) ? $this->plan['client_version'] : '1.5.0';
+            $clientVersion = array_key_exists('client_version', $this->plan) ? $this->plan['client_version'] : '1.6.0';
             if ($clientVersion !== null) {
                 $head[] = 'Litebackup-Client-Version: ' . $clientVersion;
             }

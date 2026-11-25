@@ -76,7 +76,7 @@ echo Litebackup\Binary::litebackupBinary(getenv()), " ", Litebackup\Version::VER
 '
 SCRIPT
 
-REPORT="$(docker run --rm \
+if ! REPORT="$(docker run --rm \
     --user "$(id --user):$(id --group)" \
     --volume "${WORK_DIRECTORY}:/work" \
     --env HOME=/tmp/home \
@@ -84,9 +84,13 @@ REPORT="$(docker run --rm \
     --env "PACKAGE_VERSION=${PACKAGE_VERSION}" \
     --env "COMPOSER_ROOT_VERSION=${PACKAGE_VERSION}" \
     "${TEST_IMAGE}" \
-    sh -c "${CONSUMER_CHECK}" 2>&1)" || { echo "FAIL the consumer check:" >&2; echo "${REPORT:-}" >&2; exit 1; }
+    sh -c "${CONSUMER_CHECK}" 2>&1)"; then
+    echo "FAIL the consumer check:" >&2
+    echo "${REPORT:-}" >&2
+    exit 1
+fi
 EXPECTED="/work/consumer/bin/litebackup ${PACKAGE_VERSION}"
-if [ "${REPORT}" != "${EXPECTED}" ]; then
+if [[ "${REPORT}" != "${EXPECTED}" ]]; then
     echo "FAIL php:${PHP_VERSION}-cli: want ${EXPECTED}, got" >&2
     echo "${REPORT}" >&2
     exit 1

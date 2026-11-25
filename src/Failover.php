@@ -22,7 +22,7 @@ use Litebackup\Generated\Writer;
  * Each replica asks for the write lock about once a second, so one takes
  * over once the origin's lease runs out. role() is origin, replica, or
  * unknown: unknown while the daemon does not answer, once the failover
- * stopped, from a draining or refused event until the next role change or a
+ * stopped, from a draining or denied event until the next role change or a
  * role read past it, and whenever the daemon has not confirmed the role for
  * 15 seconds, which outside follow() it never does. So a process that does
  * not follow never reports a stale origin; one that writes only while
@@ -35,7 +35,7 @@ final class Failover
     public const REPLICA = DatabaseStatus::ROLE_REPLICA;
     public const UNKNOWN = 'unknown';
     private const EVENT_PAGE = 1000;
-    private const ROLE_EVENT_TYPES = [EventType::ROLE_CHANGED, EventType::DRAINING, EventType::REFUSED];
+    private const ROLE_EVENT_TYPES = [EventType::ROLE_CHANGED, EventType::DRAINING, EventType::DENIED];
     /**
      * Error codes that end following instead of being retried. An expired
      * cursor is not one: a failover resumes at the log's end.
@@ -95,7 +95,7 @@ final class Failover
     /**
      * @internal Start failovers with $client->failovers->start().
      * @param (Closure(string): void)|null $onRoleChange
-     * @param (Closure(string): void)|null $onRefused
+     * @param (Closure(string): void)|null $onDenied
      * @param (Closure(LitebackupError): void)|null $onError
      */
     public function __construct(
@@ -103,7 +103,7 @@ final class Failover
         public readonly FailoverStatus $status,
         int $cursor,
         private readonly ?Closure $onRoleChange = null,
-        private readonly ?Closure $onRefused = null,
+        private readonly ?Closure $onDenied = null,
         private readonly ?Closure $onError = null,
     ) {
         $this->name = $status->name;
@@ -253,7 +253,7 @@ final class Failover
     /**
      * The role a status read reports: unknown while the daemon drains the
      * origin, as after a draining event, and while the failover's file is
-     * refused (conflicted), as after a refused event.
+     * refused (conflicted), as after a denied event.
      */
     private function statusRole(DatabaseStatus $database): string
     {
@@ -316,7 +316,7 @@ final class Failover
         // An event older than the last role read changes no role, because
         // that read has it; a refusal among them is still reported.
         $olderThanRoleRead = $this->roleEvent($event->type) && $event->id <= $this->roleReadLogEnd;
-        if ($olderThanRoleRead && $event->type !== EventType::REFUSED) {
+        if ($olderThanRoleRead && $event->type !== EventType::DENIED) {
             return;
         }
         switch ($event->type) {
@@ -329,7 +329,7 @@ final class Failover
                 // machine is allowed to take over yet.
                 $this->changeRole(self::UNKNOWN);
                 break;
-            case EventType::REFUSED:
+            case EventType::DENIED:
                 // The daemon refused this machine's file and the failover
                 // stays conflicted there: this machine neither writes nor
                 // follows the database.
@@ -337,8 +337,8 @@ final class Failover
                     $this->changeRole(self::UNKNOWN);
                 }
                 // The role callback could have stopped the failover.
-                if (!$this->stopped() && $this->onRefused !== null) {
-                    ($this->onRefused)($event->message);
+                if (!$this->stopped() && $this->onDenied !== null) {
+                    ($this->onDenied)($event->message);
                 }
                 break;
         }

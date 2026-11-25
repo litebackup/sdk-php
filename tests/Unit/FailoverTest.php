@@ -103,7 +103,7 @@ final class FailoverTest extends DaemonTestCase
             onRoleChange: static function (string $role) use (&$heard): void {
                 $heard[] = $role;
             },
-            onRefused: static function (string $message) use (&$heard): void {
+            onDenied: static function (string $message) use (&$heard): void {
                 $heard[] = 'refused: ' . $message;
             },
             onError: static function (LitebackupError $error) use (&$heard): void {
@@ -182,11 +182,11 @@ final class FailoverTest extends DaemonTestCase
         );
     }
 
-    public function testRefusedEventMakesTheRoleUnknown(): void
+    public function testDeniedEventMakesTheRoleUnknown(): void
     {
         $daemon = $this->startDaemon([
             ...self::startAnswers('origin'),
-            self::longPoll([self::event(6, 'refused', 'the file holds writes the server lacks')], 6),
+            self::longPoll([self::event(6, 'denied', 'the file holds writes the server lacks')], 6),
             self::roleAnswer('origin', ['state' => 'conflicted']),
             self::quietLongPolls(6),
         ]);

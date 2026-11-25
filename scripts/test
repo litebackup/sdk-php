@@ -27,10 +27,10 @@ PACKAGE_VERSION="$(sed --quiet "s/^    public const VERSION = '\(.*\)';$/\1/p" \
 SELECTED_PHP_VERSIONS=("${PHP_VERSIONS[@]}")
 INTEGRATION=0
 COMMAND=()
-while [ "${#}" -gt 0 ]; do
+while [[ "${#}" -gt 0 ]]; do
     case "${1}" in
         --php)
-            if [ "${#}" -lt 2 ]; then
+            if [[ "${#}" -lt 2 ]]; then
                 echo "--php needs a version: one of ${PHP_VERSIONS[*]}" >&2
                 exit 2
             fi
@@ -89,8 +89,8 @@ for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
         --env COMPOSER_HOME=/tmp/home/composer
         --env "COMPOSER_ROOT_VERSION=${PACKAGE_VERSION}"
     )
-    if [ "${INTEGRATION}" = 1 ]; then
-        if [ -z "${LITEBACKUP_PATH:-}" ]; then
+    if [[ "${INTEGRATION}" = 1 ]]; then
+        if [[ -z "${LITEBACKUP_PATH:-}" ]]; then
             echo "--integration needs LITEBACKUP_PATH, a static litebackup binary from scripts/build" >&2
             exit 2
         fi
@@ -101,7 +101,7 @@ for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
         )
     fi
     INSTALL_STEP="composer install --no-interaction --no-progress --quiet"
-    if [ "${#COMMAND[@]}" -gt 0 ]; then
+    if [[ "${#COMMAND[@]}" -gt 0 ]]; then
         CONTAINER_STEPS="${INSTALL_STEP} && \"\${@}\""
     else
         CONTAINER_STEPS="${INSTALL_STEP} && vendor/bin/phpunit"
@@ -109,8 +109,10 @@ for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
         CONTAINER_STEPS+=" && vendor/bin/php-cs-fixer check --diff --show-progress=none"
         for LANE in "${PACKAGE_DIRECTORY}"/tests/frameworks/*/; do
             LANE="${LANE%/}"
-            if [ -f "${LANE}/php-versions" ] && lane_runs "${LANE}" "${PHP_VERSION}"; then
-                CONTAINER_STEPS+=" && tests/frameworks/test-lane $(basename "${LANE}")"
+            if [[ -f "${LANE}/php-versions" ]]; then
+                if lane_runs "${LANE}" "${PHP_VERSION}"; then
+                    CONTAINER_STEPS+=" && tests/frameworks/test-lane $(basename "${LANE}")"
+                fi
             fi
         done
     fi

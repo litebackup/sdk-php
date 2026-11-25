@@ -53,7 +53,7 @@ final class IntegrationsTest extends DaemonTestCase
     }
 
     #[DataProvider('filenamesWithoutAFile')]
-    public function testFilenameWithoutAFileIsRefused(string $filename): void
+    public function testFilenameWithoutAFileIsDenied(string $filename): void
     {
         try {
             SqliteFile::databaseFile($filename, '/base');

@@ -104,7 +104,7 @@ final class Client
 
     /**
      * Connects, starting the daemon when needed; fails with
-     * daemon_unsupported for a daemon older than 1.5.0.
+     * daemon_unsupported for a daemon older than 1.6.0.
      */
     public function connect(): void
     {
