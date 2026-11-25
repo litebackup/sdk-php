@@ -80,11 +80,11 @@ for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
     TEST_IMAGE="$(build_test_image "${PHP_VERSION}")"
     PHP_CACHE="${CACHE_ROOT}/${PHP_VERSION}"
     mkdir --parents "${PHP_CACHE}/home"
-    MOUNT_OPTIONS=(
+    DOCKER_MOUNTS=(
         --volume "${SDK_DIRECTORY}:${SDK_DIRECTORY}"
         --volume "${PHP_CACHE}/home:/tmp/home"
     )
-    ENVIRONMENT_OPTIONS=(
+    DOCKER_ENVIRONMENT=(
         --env HOME=/tmp/home
         --env COMPOSER_HOME=/tmp/home/composer
         --env "COMPOSER_ROOT_VERSION=${PACKAGE_VERSION}"
@@ -94,8 +94,8 @@ for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
             echo "--integration needs LITEBACKUP_PATH, a static litebackup binary from scripts/build" >&2
             exit 2
         fi
-        MOUNT_OPTIONS+=(--volume "${LITEBACKUP_PATH}:${LITEBACKUP_PATH}:ro")
-        ENVIRONMENT_OPTIONS+=(
+        DOCKER_MOUNTS+=(--volume "${LITEBACKUP_PATH}:${LITEBACKUP_PATH}:ro")
+        DOCKER_ENVIRONMENT+=(
             --env "LITEBACKUP_PATH=${LITEBACKUP_PATH}"
             --env LITEBACKUP_INTEGRATION=1
         )
@@ -117,8 +117,8 @@ for PHP_VERSION in "${SELECTED_PHP_VERSIONS[@]}"; do
     echo "PHP ${PHP_VERSION}"
     docker run --rm \
         --user "$(id --user):$(id --group)" \
-        "${MOUNT_OPTIONS[@]}" \
-        "${ENVIRONMENT_OPTIONS[@]}" \
+        "${DOCKER_MOUNTS[@]}" \
+        "${DOCKER_ENVIRONMENT[@]}" \
         --workdir "${PACKAGE_DIRECTORY}" \
         "${TEST_IMAGE}" \
         bash -c "${CONTAINER_STEPS}" \

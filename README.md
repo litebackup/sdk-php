@@ -63,7 +63,7 @@ In Symfony, register `Litebackup\Integrations\Symfony\LitebackupBundle` in
 `litebackup.connections`, and run `bin/console litebackup:start` at every
 deploy. Workers (`queue:work`, `horizon:work`, and `schedule:work` in
 Laravel, `messenger:consume` in Symfony) register the backups once when they
-start; HTTP requests never call the daemon. The [PHP guide](../docs/sqlite-php.md) has the options.
+start; HTTP requests never call the daemon. The [PHP guide](https://github.com/litebackup/sdk/blob/main/docs/sqlite-php.md) has the options.
 
 ## Move a database between machines
 
@@ -129,6 +129,6 @@ command in the package's directory, and `scripts/test generate` regenerates
 also runs `tests/Integration/IntegrationTest.php` against
 `litebackup server run --development`, with `LITEBACKUP_PATH` set to a
 static `litebackup` binary. `scripts/check-package` builds the Composer
-archive and installs it into a clean project without publishing anything. The [SDK reference](../docs/sdk-reference.md) lists
-every method, and [the contract](../docs/sdk-contract.md) the behavior the
+archive and installs it into a clean project without publishing anything. The [SDK reference](https://github.com/litebackup/sdk/blob/main/docs/sdk-reference.md) lists
+every method, and [the contract](https://github.com/litebackup/sdk/blob/main/docs/sdk-contract.md) the behavior the
 Go, TypeScript, Python, Ruby, and PHP SDKs share.
